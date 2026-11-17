@@ -1,6 +1,6 @@
 /* وِردي — service worker : l'application fonctionne hors ligne une fois ouverte.
  * Changez VERSION à chaque mise à jour du site pour que les téléphones récupèrent la nouvelle version. */
-const VERSION = "wirdi-v2";
+const VERSION = "wirdi-v3";
 const SHELL = ["./", "index.html", "enseignant.html", "app.css", "core.js", "student.js", "teacher.js",
   "pdf-lib.min.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 

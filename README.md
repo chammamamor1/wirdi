@@ -38,6 +38,7 @@ Les élèves n'ont jamais besoin de l'adresse de la page enseignant : ils reçoi
 2. Pour chaque groupe : **تخطيط ورد الشهر**.
    - Choisissez la date de début (par défaut, le 1er du mois suivant), la sourate et le verset de début, la sourate et le verset de fin.
    - Ajustez le nombre de parts si besoin.
+   - **الجزء الذي يبدأ به الشهر** : choisissez la part du premier jour (par défaut 1). Le bouton « متابعة من الشهر السابق » propose automatiquement la part qui suit celle du dernier jour du mois précédent.
    - Vérifiez la ligne verte « ✓ تمّ التحقق ». L'enregistrement est bloqué si un verset manque.
 3. **حفظ وإنشاء الرابط**, puis **إرسال إلى واتساب** : choisissez le groupe WhatsApp du فوج.
 4. Faites de temps en temps **حفظ في ملف** (sauvegarde) pour ne pas perdre vos groupes.
@@ -60,6 +61,6 @@ Remplacez les fichiers modifiés dans le dépôt GitHub (*Add file → Upload fi
 
 ## Détails techniques
 
-- `js/core.js` : métadonnées du Coran (mushaf de Médine, 604 pages, 6236 versets ; source Tanzil via `fawazahmed0/quran-api`, vérifiée), découpage équilibré au verset près (une fin de sourate est préférée quand elle tombe à moins de 2 pages de la coupure idéale), vérification de couverture, lien signé.
-- `js/teacher.js` : page enseignant. `js/student.js` : application élève (fiche PDF dessinée sur canvas puis assemblée par `vendor/pdf-lib.min.js`, sous licence MIT ; rappels Google Agenda et `.ics`).
+- `core.js` : métadonnées du Coran (mushaf de Médine, 604 pages, 6236 versets ; source Tanzil via `fawazahmed0/quran-api`, vérifiée), découpage équilibré au verset près (une fin de sourate est préférée quand elle tombe à moins de 2 pages de la coupure idéale), vérification de couverture, lien signé.
+- `teacher.js` : page enseignant. `student.js` : application élève (fiche PDF dessinée sur canvas puis assemblée par `pdf-lib.min.js`, sous licence MIT ; rappels Google Agenda et `.ics`).
 - `sw.js` + `manifest.webmanifest` : installation et fonctionnement hors ligne.

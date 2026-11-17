@@ -21,6 +21,7 @@
       newGroup: "اسم الفوج الجديد", add: "إضافة", del: "حذف", delQ: n => `حذف فوج «${n}» وكل برامجه؟`, yes: "نعم، احذف", no: "إلغاء",
       plan: "تخطيط ورد الشهر", noPlan: "لم يُخطَّط أي ورد بعد.", link: "الرابط",
       from: "البداية: السورة والآية", to: "النهاية: السورة والآية", start: "تاريخ بداية الورد", parts: "عدد الأجزاء (أيام الدورة)",
+      startPart: "الجزء الذي يبدأ به الشهر", cont: n => `متابعة من الشهر السابق (الجزء ${n})`,
       ayah: "الآية", preview: "التقسيم", table: "جدول الشهر", save: "حفظ وإنشاء الرابط", cancel: "إلغاء",
       covOk: n => `✓ تمّ التحقق: ${n} آية، دون نقص ولا تكرار`, invalid: "رقم آية غير موجود في السورة المختارة.",
       exceed: n => `عدد الأجزاء أكبر من أيام الشهر المتبقية (${n}): بعض الأجزاء لن تُقرأ هذا الشهر.`,
@@ -39,6 +40,7 @@
       newGroup: "Nom du nouveau groupe", add: "Ajouter", del: "Supprimer", delQ: n => `Supprimer le groupe « ${n} » et tous ses programmes ?`, yes: "Oui, supprimer", no: "Annuler",
       plan: "Planifier le wird du mois", noPlan: "Aucun wird planifié.", link: "Lien",
       from: "Début : sourate et verset", to: "Fin : sourate et verset", start: "Date de début du wird", parts: "Nombre de parts (jours de la rotation)",
+      startPart: "Part du premier jour du mois", cont: n => `Continuer le mois précédent (part ${n})`,
       ayah: "Verset", preview: "Découpage", table: "Tableau du mois", save: "Enregistrer et créer le lien", cancel: "Annuler",
       covOk: n => `✓ Vérifié : ${n} versets, aucun oublié ni répété`, invalid: "Ce numéro de verset n'existe pas dans la sourate choisie.",
       exceed: n => `Plus de parts que de jours restants dans le mois (${n}) : certaines parts ne seront pas lues ce mois-ci.`,
@@ -55,7 +57,7 @@
   const t = () => T[S.lang];
 
   const studentBase = () => new URL("index.html", location.href).toString();
-  const toPlan = (g, p) => ({ id: g.id, group: g.name, mosque: S.mosque.trim(), start: p.start, a: p.a, b: p.b, k: p.k });
+  const toPlan = (g, p) => ({ id: g.id, group: g.name, mosque: S.mosque.trim(), start: p.start, a: p.a, b: p.b, k: p.k, ...(p.d > 1 ? { d: p.d } : {}) });
   const rangeTxt = p => `${W.verseLabel(...p.a)} ← ${W.verseLabel(...p.b)}`;
   const newId = () => Math.random().toString(36).slice(2, 8);
 
@@ -129,9 +131,16 @@
     const P = UI.edit, g = S.groups.find(x => x.id === P.g);
     const A = [P.fs, +P.fa], B = [P.ts, +P.ta], okA = W.valid(...A), okB = W.valid(...B), ok = okA && okB;
     const nv = ok ? Math.abs(W.idx(...B) - W.idx(...A)) + 1 : 1, mx = Math.min(31, nv), k = Math.max(1, Math.min(P.k, mx));
+    const dd = Math.max(1, Math.min(P.d || 1, k)); P.d = dd;
     const segs = ok ? W.split(A, B, k) : [], cov = ok ? W.verify(A, B, segs) : null;
     const left = W.daysIn(W.ym(P.start)) - +P.start.slice(8) + 1;
     const good = cov && !cov.problems.length;
+    let cont = 0;                                   // part qui suit celle du dernier jour du mois précédent (même plage et même k)
+    const prev = good ? g.plans.filter(x => x.start < P.start).sort((x, y) => (x.start < y.start ? -1 : 1)).pop() : null;
+    if (prev && prev.k === k && JSON.stringify(prev.a) === JSON.stringify(A) && JSON.stringify(prev.b) === JSON.stringify(B)) {
+      const w = W.wirdFor([prev], W.addDays(P.start, -1));
+      if (w) cont = (w.part % k) + 1;
+    }
     const status = !ok ? `<div class="errbox">${t().invalid}</div>`
       : cov.problems.length ? `<div class="errbox">${cov.problems.map(e).join("<br>")}</div>`
       : `<div class="ok">${t().covOk(cov.verses)}</div>`;
@@ -139,7 +148,7 @@
       <span class="m">${t().pg(Math.round(W.segPages(s)))} · ${t().vv(W.segVerses(s))}</span></div>`).join("");
     let table = "";
     if (good) {
-      const m = W.ym(P.start), plan = { start: P.start, a: A, b: B, k };
+      const m = W.ym(P.start), plan = { start: P.start, a: A, b: B, k, d: dd };
       table = W.monthDays(m).filter(d => d >= P.start).map(d => {
         const w = W.wirdFor([plan], d);
         return `<tr><td class="d">${W.dayName(d, ar())}</td><td>${W.dateTxt(d, ar())}</td><td class="w">${e(W.label(w.seg))}</td><td>${w.part}</td></tr>`;
@@ -157,6 +166,10 @@
       <div class="row"><span class="grow">${t().parts}</span>
         <span class="stepper"><button data-a="k-" ${k <= 1 ? "disabled" : ""} aria-label="−">−</button><b>${k}</b>
         <button data-a="k+" ${k >= mx ? "disabled" : ""} aria-label="+">+</button></span></div>
+      <div class="row"><span class="grow">${t().startPart}</span>
+        <span class="stepper"><button data-a="d-" ${dd <= 1 ? "disabled" : ""} aria-label="−">−</button><b>${dd}</b>
+        <button data-a="d+" ${dd >= k ? "disabled" : ""} aria-label="+">+</button></span></div>
+      ${cont && cont !== dd ? `<button class="btn" data-a="cont" data-d="${cont}" style="width:100%">${t().cont(cont)}</button>` : ""}
       ${k > left ? `<div class="errbox small">${t().exceed(left)}</div>` : ""}
       ${status}
       ${segs.length ? `<h3 class="k">${t().preview}</h3><div class="parts">${parts}</div>` : ""}
@@ -189,7 +202,7 @@
     const last = [...g.plans].sort((x, y) => (x.start < y.start ? -1 : 1)).pop();
     const next = W.addMonths(W.ym(W.today()), 1) + "-01";
     const a = last ? last.a : [78, 1], b = last ? last.b : [114, 6];
-    UI.edit = { g: g.id, start: next, fs: a[0], fa: String(a[1]), ts: b[0], ta: String(b[1]), k: last ? last.k : W.suggest(a, b), touched: !!last };
+    UI.edit = { g: g.id, start: next, fs: a[0], fa: String(a[1]), ts: b[0], ta: String(b[1]), k: last ? last.k : W.suggest(a, b), touched: !!last, d: 1 };
   }
 
   document.addEventListener("click", ev => {
@@ -213,6 +226,9 @@
       case "close-edit": UI.edit = null; break;
       case "close-link": UI.link = null; break;
       case "k-": UI.edit.k = Math.max(1, UI.edit.k - 1); UI.edit.touched = true; break;
+      case "d-": UI.edit.d = Math.max(1, (UI.edit.d || 1) - 1); break;
+      case "d+": UI.edit.d = (UI.edit.d || 1) + 1; break;
+      case "cont": UI.edit.d = +el.dataset.d; break;
       case "k+": UI.edit.k = UI.edit.k + 1; UI.edit.touched = true; break;
       case "save-plan": {
         const P = UI.edit, grp = S.groups.find(x => x.id === P.g);
@@ -221,7 +237,7 @@
         const [lo, hi] = W.idx(...A) <= W.idx(...B) ? [A, B] : [B, A];
         const k = Math.max(1, Math.min(P.k, 31, W.idx(...hi) - W.idx(...lo) + 1));
         if (W.verify(lo, hi, W.split(lo, hi, k)).problems.length) return;
-        grp.plans = grp.plans.filter(x => x.start !== P.start).concat({ start: P.start, a: lo, b: hi, k });
+        grp.plans = grp.plans.filter(x => x.start !== P.start).concat({ start: P.start, a: lo, b: hi, k, ...(Math.min(P.d || 1, k) > 1 ? { d: Math.min(P.d, k) } : {}) });
         save(); UI.edit = null; UI.link = { g: grp.id, start: P.start }; break;
       }
       case "show-link": UI.link = { g: el.dataset.g, start: el.dataset.s }; break;

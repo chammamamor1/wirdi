@@ -127,14 +127,16 @@ const W = (() => {
   const monthTxt = (m, ar = true) => `${(ar ? AR_M : FR_M)[+m.slice(5) - 1]} ${m.slice(0, 4)}`;
 
   // ---------------------------------------------------------------- plan mensuel et rotation
-  /** Plan : { id, group, mosque, start, a:[s,v], b:[s,v], k }. La rotation commence le jour start par la part 1. */
+  /** Plan : { id, group, mosque, start, a:[s,v], b:[s,v], k, d? }. La rotation commence le jour start par la part d
+   * (d = 1 par défaut), puis d+1, …, k, 1, … : permet de continuer là où le mois précédent s'est arrêté. */
   const planSegments = p => split(p.a, p.b, p.k);
   /** ورد d'une date donnée : plan le plus récent déjà commencé, puis rotation. */
   function wirdFor(plans, date) {
     const p = plans.filter(x => x.start <= date).sort((x, y) => (x.start < y.start ? -1 : 1)).pop();
     if (!p) return null;
     const segs = planSegments(p), n = segs.length;
-    const i = ((diffDays(p.start, date) % n) + n) % n;
+    const shift = Math.min(Math.max(Math.trunc(p.d) || 1, 1), n) - 1;   // part du premier jour (1 par défaut)
+    const i = (((diffDays(p.start, date) + shift) % n) + n) % n;
     return { plan: p, seg: segs[i], part: i + 1, parts: n };
   }
 
@@ -145,12 +147,13 @@ const W = (() => {
     for (const ch of new TextEncoder().encode(str)) { h ^= ch; h = Math.imul(h, 0x01000193) >>> 0; }
     return h.toString(36);
   }
-  const canon = p => [p.id, p.group, p.mosque || "", p.start, p.a.join(":"), p.b.join(":"), p.k].join("|");
+  const canon = p => [p.id, p.group, p.mosque || "", p.start, p.a.join(":"), p.b.join(":"), p.k].concat(p.d > 1 ? ["D" + p.d] : []).join("|");
 
   /** Construit le lien à envoyer aux élèves. */
   function planLink(base, p) {
     const u = new URL(base);
     const q = { id: p.id, g: p.group, m: p.mosque || "", s: p.start, a: p.a.join(":"), b: p.b.join(":"), k: String(p.k), c: checksum(canon(p)) };
+    if (p.d > 1) q.d = String(p.d);
     u.search = new URLSearchParams(q).toString();
     u.hash = "";
     return u.toString();
@@ -170,8 +173,10 @@ const W = (() => {
       id: params.get("id") || "", group: params.get("g") || "", mosque: params.get("m") || "",
       start: params.get("s"), a: num(params.get("a")), b: num(params.get("b")), k: Number(params.get("k")),
     };
+    if (params.get("d") !== null) p.d = Number(params.get("d"));
     if (checksum(canon(p)) !== params.get("c")) return { error: "checksum" };
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(p.start) || !valid(...p.a) || !valid(...p.b) || !(p.k >= 1 && p.k <= 31)) return { error: "invalid" };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(p.start) || !valid(...p.a) || !valid(...p.b) || !(p.k >= 1 && p.k <= 31) ||
+        (p.d !== undefined && !(Number.isInteger(p.d) && p.d >= 1 && p.d <= p.k))) return { error: "invalid" };
     const segs = planSegments(p), v = verify(p.a, p.b, segs);
     if (v.problems.length) return { error: "coverage", problems: v.problems };
     return { plan: p };
